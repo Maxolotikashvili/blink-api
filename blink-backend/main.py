@@ -22,7 +22,7 @@ app.include_router(users_router, prefix="/users", tags=["Users"])
 app.include_router(themes_router, prefix="/themes", tags=["Themes"])
 
 active_connections = {}
-
+    
 @app.websocket("/connect")
 async def connectUser(websocket: WebSocket):
     query_params = websocket.query_params
