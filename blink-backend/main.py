@@ -669,7 +669,6 @@ async def has_seen(websocket: WebSocket):
                                     if seen['email'] != current_user['sub']
                                 ]
                                 
-                            print(current_user)
                             last_message = group_chat["messages"][-1] if group_chat["messages"] else None
                             if last_message:
                                 if not any(seen['email'] == current_user['sub'] for seen in last_message['isSeenBy']):
