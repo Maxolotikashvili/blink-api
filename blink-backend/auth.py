@@ -14,18 +14,15 @@ def verify_jwt_token(authorization: str = Depends(oauth2_scheme)):
     
     token = authorization
     try:
-        # Decode the JWT token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload  # Return the decoded token payload if valid
+        return payload  
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token is invalid")
     
-    # Dependency to get the current user from the token
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     try:
-        # Decode the token and extract user details
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_email = payload.get("sub")
         
