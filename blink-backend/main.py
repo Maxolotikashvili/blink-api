@@ -876,7 +876,6 @@ async def create_group_chat(websocket: WebSocket):
                 await websocket.send_json({"message": "You already have a group chat with these users."})
                 continue
 
-            # Create the new group chat for each user
             for user in group_chat_users:
                 user_specific_group_chat_users = [
                     {
