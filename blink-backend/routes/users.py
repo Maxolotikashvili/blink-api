@@ -19,7 +19,7 @@ async def get_user_info(current_user: dict = Depends(get_current_user)):
             "bio": current_user["bio"],
             "email": current_user["email"],
             "avatar": current_user["avatar"],
-            "theme": current_user.get("theme", "synthwave"),
+            "theme": current_user.get("theme", "chronoflux"),
             "notifications": current_user.get("notifications", []),
             "friendsList": current_user.get("friendsList", []),
             "groupChatsList": current_user.get("groupChatsList", [])
@@ -50,7 +50,7 @@ async def register_user(user: UserRegister):
         "email": user.email.lower(),
         "password": hashed_password,
         "avatar": user.avatar,
-        "theme": "synthwave",
+        "theme": "chronoflux",
         "notifications": [],
         "friendsList": [],
     }
