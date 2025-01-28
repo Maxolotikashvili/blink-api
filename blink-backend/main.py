@@ -109,8 +109,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            target_username_or_email = await websocket.receive_text()
-            target_username_or_email = target_username_or_email.strip().lower()
+            received_data = await websocket.receive_text()
+            parsed_data = json.loads(received_data)
+            target_username_or_email = parsed_data.get('inputValue').strip().lower()
+            notification_send_time = parsed_data.get('localizedTime')
 
             sender_data = await users_collection.find_one({"email": user_email})
             if not sender_data:
@@ -200,7 +202,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "status": "pending",
                 "message": f"Friend request sent to {target_user['username']}",
                 "displayMessage": f"Friend request sent to {target_user['username']}",
-                "timeStamp": str(datetime.datetime.now()),
+                "timeStamp": notification_send_time,
             }
 
             incoming_notification = {
@@ -223,7 +225,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "status": "pending",
                 "message": f"{sender_data["username"]} wants to be your friend",
                 "displayMessage": f"{sender_data['username']} wants to be your friend",
-                "timeStamp": str(datetime.datetime.now()),
+                "timeStamp": notification_send_time,
             }
 
             await users_collection.update_one(
@@ -246,6 +248,7 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"{current_user['username']} disconnected.")
         if user_email in active_connections:
             del active_connections[user_email]
+            
 
 @app.websocket("/accept_friend_request")
 async def accept_friend_request(websocket: WebSocket):
@@ -273,6 +276,7 @@ async def accept_friend_request(websocket: WebSocket):
             parsed_data = json.loads(data)
             sender_email = parsed_data.get("senderEmail")
             is_accepted = parsed_data.get("isAccepted")
+            notification_send_time = parsed_data.get('localizedTime')
 
             if not sender_email or is_accepted is None:
                 await websocket.send_json({"message": "Invalid data received"})
@@ -320,7 +324,7 @@ async def accept_friend_request(websocket: WebSocket):
                     "email": sender_data["email"],
                 },
                 "status": "complete",
-                "timeStamp": str(datetime.datetime.now()),
+                "timeStamp": notification_send_time,
             }
 
             if is_accepted: 
@@ -474,6 +478,7 @@ async def chat(websocket: WebSocket):
             if message_type == "groupChatText":
                 chat_id = parsed_data.get("chatId")
                 text = parsed_data.get("text")
+                groupchat_message_send_time = parsed_data.get('localizedTime')
 
                 if not chat_id or not text:
                     await websocket.send_json({"message": "Invalid data received for group chat"})
@@ -496,7 +501,7 @@ async def chat(websocket: WebSocket):
 
                 base_message = {
                     "id": str(uuid.uuid4()),
-                    "timeStamp": timestamp,
+                    "timeStamp": groupchat_message_send_time,
                     "text": text,
                     "isSeenBy": []
                 }
@@ -534,6 +539,7 @@ async def chat(websocket: WebSocket):
             elif message_type == "friendText":
                 friend_name = parsed_data.get("friendName")
                 text = parsed_data.get("text")
+                friend_message_send_time = parsed_data.get('localizedTime')
 
                 if not friend_name or not text:
                     await websocket.send_json({"message": "Invalid data received for friend"})
@@ -561,7 +567,7 @@ async def chat(websocket: WebSocket):
                     "isSeen": False,
                     "lastSeen": False,
                     "sender": "user",
-                    "timeStamp": str(datetime.datetime.now(datetime.timezone.utc)),
+                    "timeStamp": friend_message_send_time,
                     "text": text,
                 }
 
@@ -726,15 +732,13 @@ async def has_seen(websocket: WebSocket):
                     )
                     continue
 
-                # Update user's messages: lastSeen and isSeen logic
                 last_outgoing_index = next(
                     (i for i, msg in reversed(list(enumerate(messages))) if not msg.get("isIncoming")),
                     None,
                 )
                 for i, message in enumerate(messages):
-                    if not message.get("isIncoming"):  # Only touch messages with !isIncoming
+                    if not message.get("isIncoming"):
                         message["lastSeen"] = i == last_outgoing_index
-                    # Set isSeen to true for all messages
                     message["isSeen"] = True
 
                 await users_collection.update_one(
@@ -742,7 +746,6 @@ async def has_seen(websocket: WebSocket):
                     {"$set": {"friendsList.$.messages": messages}},
                 )
 
-                # Handle the friend's data
                 friend_data = await users_collection.find_one({"user_id": friend_id})
                 if not friend_data:
                     await websocket.send_json({"error": "Friend's data not found"})
@@ -753,15 +756,13 @@ async def has_seen(websocket: WebSocket):
                     if user_friend["email"] == user_email:
                         friend_messages = user_friend.get("messages", [])
 
-                        # Update friend's messages: lastSeen and isSeen logic
                         last_outgoing_index = next(
                             (i for i, msg in reversed(list(enumerate(friend_messages))) if not msg.get("isIncoming")),
                             None,
                         )
                         for i, message in enumerate(friend_messages):
-                            if not message.get("isIncoming"):  # Only touch messages with !isIncoming
+                            if not message.get("isIncoming"):  
                                 message["lastSeen"] = i == last_outgoing_index
-                            # Set isSeen to true for all messages
                             message["isSeen"] = True
 
                         await users_collection.update_one(
@@ -782,7 +783,6 @@ async def has_seen(websocket: WebSocket):
                                 }
                             )
 
-                # Notify the current user
                 await websocket.send_json(
                     {"type": "hasSeen", "friendName": friend["username"], "lastSeen": True}
                 )
