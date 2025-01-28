@@ -492,7 +492,7 @@ async def chat(websocket: WebSocket):
                     await websocket.send_json({"message": "Group chat not found"})
                     continue
 
-                timestamp = str(datetime.datetime.now())
+                timestamp = str(datetime.datetime.now(datetime.timezone.utc))
 
                 base_message = {
                     "id": str(uuid.uuid4()),
@@ -561,7 +561,7 @@ async def chat(websocket: WebSocket):
                     "isSeen": False,
                     "lastSeen": False,
                     "sender": "user",
-                    "timeStamp": str(datetime.datetime.now()),
+                    "timeStamp": str(datetime.datetime.now(datetime.timezone.utc)),
                     "text": text,
                 }
 
